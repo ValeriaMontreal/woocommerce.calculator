@@ -1,0 +1,139 @@
+// CALCULATOR WOOCOMMERCE
+
+function add_custom_calculator_to_product_page() {
+    global $product;
+
+    // Check if it's a single product page
+    if (is_product()) {
+		$pi2_count = get_field('pi2_count_field');
+	//	$price_for_box = get_field('price_for_box');
+	//	$price_for_pi2 = get_field('price_for_pi2');
+		if ( has_term( array( 'planchers-wickham' ), 'product_cat', $product->get_id() ) ) {       
+		 echo '<span class="woocommerce-in-stock" style="color:#B22222;font-weight: bold;">Disponible sur commande spéciale</span><p>Prévoyez un délai de 2 à 4 semaines pour la livraison.<br> Nous vous contacterons pour le choix du lustre de votre plancher.</p>';
+	}  
+        ?>
+        <div id="custom-calculator">
+
+            <label for="quantity">Entrez les dimensions de vos pièces en pieds linéaires:</label> <br>
+            <div class="input-set" style="margin-top:10px;">
+                <input type="number" class="dimension" min="1" step="1" value="" placeholder="pi" style="width: 20%;"> <span>X</span>
+                <input type="number" class="dimension" min="1" step="1" value="" placeholder="pi" style="width: 20%;">
+				 <span class="total-label">=</span>
+				<input type="text" class="total" readonly style="width: 20%;">
+				
+            </div>
+           
+            <div id="add-piece-container">
+                <p id="add-piece" style="color: #63a500; margin-top:10px; cursor: pointer;"><i class='fa fa-plus'></i> Ajouter une pièce</p>
+            </div>
+			<div id="discount-container" style="padding-bottom:20px;">
+                <input type="checkbox" id="perte-checkbox"> <label for="perte-checkbox">Inclure 10% pour perte</label>
+            </div>
+			 <span class="pi2-count" style="display:none;"><?php echo esc_html($pi2_count); ?></span>
+			 <span id='grand-superficie' style="display:none;"></span>
+			<br>
+			<p id="grand-total-box" ></p> 
+			
+            <p id="grand-total" style="font-weight: bold;"></p>
+				
+			<hr style="border-top: 2px solid #63a500;"/>
+
+			<br>
+        </div>
+        <script>
+              jQuery(function ($) {
+				var pi2Count = <?php echo json_encode($pi2_count); ?>;
+				
+				var originalCheckbox = $('#perte-checkbox');
+				var price = <?php echo $product->get_price(); ?>;
+								
+				function updateTotal() {
+					var grandTotal = 0;
+					var grandTotalBox = 0;
+					var grandSuperficie = 0;
+					var testTotal=0;
+					var superficie=0;
+
+					$('.input-set').each(function () {
+						var quantity = $(this).find('.dimension:first').val();
+						var quantity1 = $(this).find('.dimension:last').val();
+						 superficie = quantity * quantity1;
+						$(this).find('.total').val(superficie + ' pi2');
+						var totalBox = Math.ceil(superficie / pi2Count);
+						var totalValue = totalBox * price;
+						//var totalValue = totalBox * price_for_box;
+						testTotal+=superficie;
+						grandTotal += totalValue;
+						grandSuperficie += totalBox * pi2Count;
+						grandTotalBox = grandSuperficie / pi2Count;
+					});
+
+					// Check the checkbox state for applying the 10% discount
+					if (originalCheckbox.prop('checked')) {
+						// Apply 10% discount if the checkbox is checked
+						if (grandSuperficie < testTotal * 1.1) {
+					//	grandTotal = Math.ceil(grandSuperficie * 1.1 / pi2Count) * price_for_box;
+						grandTotal = Math.ceil(grandSuperficie * 1.1 / pi2Count) * price;
+						grandTotalBox = Math.ceil(grandSuperficie * 1.1 / pi2Count);
+						grandSuperficie = Math.ceil(grandSuperficie * 1.1 / pi2Count) * pi2Count;
+					}
+}
+					// Display and update the totals
+					$('.pi2-count').html('Boîte:<strong> $' + price.toFixed(2) + '</strong> (une boite couvre ' + pi2Count + ' pi<sup>2</sup>)').show();
+					$('#grand-total-box').html('Boîtes: <strong>' + Math.ceil(grandTotalBox) + '</strong> (couvre ' + grandSuperficie.toFixed(2) + ' pi<sup>2</sup>)').show();
+					$('#grand-total').text('Total: $' + grandTotal.toFixed(2));
+					$('.input-text.qty.text').val(Math.ceil(grandTotalBox));
+					
+					var addToCartButton = $('.single_add_to_cart_button');
+
+					// Update the data attributes of the button
+					addToCartButton.attr('data-quantity', grandTotal);
+				       
+				}
+
+				// Bind the deletePiece function to the click event of the delete icon
+				$(document).on('click', '.delete-piece', function () {
+					$(this).closest('.input-set').remove();
+					updateTotal();
+				});
+
+				// Update the total initially
+				updateTotal();
+
+				// Bind the addPiece function to the click event of the text
+				$('#add-piece-container').on('click', '#add-piece', function () {
+					// Clone the first input set
+					var clonedInputs = $('.input-set:first').clone();
+
+					// Clear values in cloned inputs
+					clonedInputs.find('.dimension').val('');
+
+					// Ensure that the checkbox state is consistent with the original input set
+					var clonedCheckbox = clonedInputs.find('.perte-checkbox');
+					clonedCheckbox.prop('checked', originalCheckbox.prop('checked'));
+
+					// Add a delete icon to the cloned input set
+					clonedInputs.append('<span class="delete-piece" style="cursor: pointer; margin-left: 10px; color: #63a500;"><i class="fa fa-minus"></i> Supprimer</span>');
+
+					// Append the cloned input set to the container
+					clonedInputs.insertBefore('#add-piece-container');
+
+					// Trigger the updateTotal function for the cloned inputs
+					updateTotal();
+				});
+
+				// Bind the updateTotal function to the change event of the 10% checkbox
+				$(document).on('change', '#perte-checkbox', updateTotal);
+
+				// Bind the updateTotal function to the input's input event
+				$(document).on('input', '.dimension', updateTotal);
+			});
+
+        </script>
+        <?php
+    }
+}
+add_action('woocommerce_before_add_to_cart_form', 'add_custom_calculator_to_product_page');
+
+
+
